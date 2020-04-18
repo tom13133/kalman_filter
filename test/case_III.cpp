@@ -19,13 +19,6 @@ struct measurement {
 
 void kf_init(KalmanFilter& kf, measurement& meas);
 
-inline double DegToRad(const double deg) {
-  return deg * M_PI / 180.;
-}
-
-inline double RadToDeg(const double rad) {
-  return rad * 180. / M_PI;
-}
 
 int main() {
   std::vector<measurement> raw_data, kf_data;
@@ -82,19 +75,6 @@ int main() {
     }
 
 
-    Eigen::MatrixXd J(2, 2), J_inv(2, 2), R0(2, 2);
-    double range = meas.range_;
-    double azimuth = DegToRad(meas.azimuth_);
-
-    J << cos(azimuth), -range * sin(azimuth),
-         sin(azimuth), range * cos(azimuth);
-    J_inv << cos(azimuth), sin(azimuth),
-             -range * sin(azimuth), range * cos(azimuth);
-    R0 << pow(1.0/3, 2), 0,
-          0, pow(0.25/3, 2);  // Need to be set
-    R0 = J * R0 * J_inv;
-    kf.set_R(R0);
-
     double dt = meas.time_ - kf.get_t();
     Eigen::MatrixXd F(4, 4);
     F << 1, 0, dt, 0,
@@ -104,15 +84,57 @@ int main() {
 
     kf.set_F(F);
 
+    Eigen::MatrixXd G(4, 2), Qv(2, 2);
+    G << dt * dt / 2, 0,
+         0, dt * dt / 2,
+         dt, 0,
+         0, dt;
+    Qv << 4, 0,
+          0, 4;
+    kf.set_Q(G * Qv * G.transpose());
+
     // Predict
     kf.Predict();
     kf.set_t(meas.time_);
     Eigen::VectorXd pred = kf.get_x();
+
+    Eigen::MatrixXd H(3, 4);
+    double H20 = pred[1] * (pred[2]*pred[1]-pred[3]*pred[0]) / std::pow(pred[0] * pred[0] + pred[1] * pred[1], 3/2.);
+    double H21 = pred[0] * (pred[3]*pred[0]-pred[2]*pred[1]) / std::pow(pred[0] * pred[0] + pred[1] * pred[1], 3/2.);
+    double H22 = pred[0] / std::sqrt(pred[0] * pred[0] + pred[1] * pred[1]);
+    double H23 = pred[1] / std::sqrt(pred[0] * pred[0] + pred[1] * pred[1]);
+    H << 1, 0, 0, 0,
+         0, 1, 0, 0,
+         H20, H21, H22, H23;
+
+    // Haven't find an approach to map uncertainty from polar to cartesian
+    // Here is an approximation method.
+    Eigen::MatrixXd J(2, 2), J_inv(2, 2), R0(2, 2), R(3, 3);
+    double range = meas.range_;
+    double azimuth = DegToRad(meas.azimuth_);
+    double cov_range = (0.25/3)*(0.25/3);
+    double cov_azimuth = (1./3)*(1./3);
+    double cov_rate = (0.12/3)*(0.12/3);
+
+    J << cos(azimuth), -sin(azimuth),
+         sin(azimuth), cos(azimuth);
+    J_inv << cos(azimuth), sin(azimuth),
+             -sin(azimuth), cos(azimuth);
+    R0 << cov_range, 0,
+          0, cov_azimuth;  // Need to be set
+    R0 = J * R0 * J_inv;
+    R << R0(0, 0), R0(0, 1), 0,
+         R0(1, 0), R0(1, 1), 0,
+         0, 0, cov_rate;
+    kf.set_R(R);
+
     // Update
-    Eigen::VectorXd z_in(2);
+    Eigen::VectorXd z_in(3);
     double x = meas.range_ * std::cos(DegToRad(meas.azimuth_));
     double y = meas.range_ * std::sin(DegToRad(meas.azimuth_));
-    z_in << x, y;
+    z_in << x, y, meas.range_rate_;
+
+
     kf.Update(z_in);
     Eigen::VectorXd update = kf.get_x();
 
@@ -133,7 +155,7 @@ int main() {
 
     if (std::isnan(pred[0]) || std::isnan(pred[1])
         || std::isnan(pred[2]) || std::isnan(pred[3])
-        || (Point(pred[0], pred[1], 0) - Point(x, y, 0)).norm() > 5) {
+        || (Point(pred[0], pred[1], 0) - Point(x, y, 0)).norm() > 3) {
       kf_data.push_back(meas);
       kf_init(kf, meas);
       std::cout << "Prediction ERROR!!!" << std::endl;
@@ -168,12 +190,13 @@ void kf_init(KalmanFilter& kf, measurement& meas) {
   double x = meas.range_ * std::cos(DegToRad(meas.azimuth_));
   double y = meas.range_ * std::sin(DegToRad(meas.azimuth_));
   // EKF initialization
-  double cov_azimuth = (1./3)*(1./3);
   double cov_range = (0.25/3)*(0.25/3);
+  double cov_azimuth = (1./3)*(1./3);
+  double cov_rate = (0.12/3)*(0.12/3);
 
   Eigen::VectorXd x_in(4), u_in(4);
   Eigen::MatrixXd P(4, 4), F(4, 4), B(4, 4),
-                  Q(4, 4), H(2, 4), R(2, 2);
+                  Q(4, 4), H(3, 4), R(3, 3);
 
   x_in << x, y, meas.v_[0], meas.v_[1];
   u_in << 0, 0, 0, 0;
@@ -192,17 +215,27 @@ void kf_init(KalmanFilter& kf, measurement& meas) {
         0, 1;
   Q = G * Qv * G.transpose();
 
+  double H20 = x_in[1] * (x_in[2]*x_in[1]-x_in[3]*x_in[0]) / std::pow(x_in[0] * x_in[0] + x_in[1] * x_in[1], 3/2.);
+  double H21 = x_in[0] * (x_in[3]*x_in[0]-x_in[2]*x_in[1]) / std::pow(x_in[0] * x_in[0] + x_in[1] * x_in[1], 3/2.);
+  double H22 = x_in[0] / std::sqrt(x_in[0] * x_in[0] + x_in[1] * x_in[1]);
+  double H23 = x_in[1] / std::sqrt(x_in[0] * x_in[0] + x_in[1] * x_in[1]);
   H << 1, 0, 0, 0,
-       0, 1, 0, 0;
+       0, 1, 0, 0,
+       H20, H21, H22, H23;
 
+  // Haven't find an approach to map uncertainty from polar to cartesian
+  // Here is an approximation method.
   Eigen::MatrixXd J(2, 2), J_inv(2, 2), R0(2, 2);
-  J << cos(meas.azimuth_), -meas.range_ * sin(meas.azimuth_),
-       sin(meas.azimuth_), meas.range_ * cos(meas.azimuth_);
+  J << cos(meas.azimuth_), -sin(meas.azimuth_),
+       sin(meas.azimuth_), cos(meas.azimuth_);
   J_inv << cos(meas.azimuth_), sin(meas.azimuth_),
-           -meas.range_ * sin(meas.azimuth_), meas.range_ * cos(meas.azimuth_);
-  R0 << cov_azimuth, 0,
-        0, cov_range;  // Need to be set
-  R = J * R0 * J_inv;
+           -sin(meas.azimuth_), cos(meas.azimuth_);
+  R0 << cov_range, 0,
+        0, cov_azimuth;  // Need to be set
+  R0 = J * R0 * J_inv;
+  R << R0(0, 0), R0(0, 1), 0,
+       R0(1, 0), R0(1, 1), 0,
+       0, 0, cov_rate;
 
   kf.Init(x_in, u_in, P, F, B, Q, H, R, meas.time_);
 }

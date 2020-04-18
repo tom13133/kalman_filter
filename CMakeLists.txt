@@ -43,6 +43,14 @@ add_library(${PROJECT_NAME}
    src/kalman_filter.cpp
 )
 
-add_executable(kalman test/test.cpp)
-add_dependencies(kalman ${main_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(kalman ${catkin_LIBRARIES} ${PROJECT_NAME})
+add_executable(kalman_1 test/case_I.cpp)
+add_dependencies(kalman_1 ${main_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(kalman_1 ${catkin_LIBRARIES} ${PROJECT_NAME})
+
+add_executable(kalman_2 test/case_II.cpp)
+add_dependencies(kalman_2 ${main_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(kalman_2 ${catkin_LIBRARIES} ${PROJECT_NAME})
+
+add_executable(kalman_3 test/case_III.cpp)
+add_dependencies(kalman_3 ${main_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(kalman_3 ${catkin_LIBRARIES} ${PROJECT_NAME})

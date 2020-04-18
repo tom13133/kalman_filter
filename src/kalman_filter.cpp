@@ -87,6 +87,12 @@ void KalmanFilter::set_H(const Eigen::MatrixXd &H) {
   H_ = H;
 }
 
+void KalmanFilter::set_Q(const Eigen::MatrixXd &Q) {
+  assert(Q.rows() == Q_.rows());
+  assert(Q.cols() == Q_.cols());
+  Q_ = Q;
+}
+
 void KalmanFilter::set_R(const Eigen::MatrixXd &R) {
   assert(R.rows() == R_.rows());
   assert(R.cols() == R_.cols());

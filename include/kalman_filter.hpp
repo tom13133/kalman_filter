@@ -1,6 +1,14 @@
-#ifndef INCLUDE_KALMAN_FILTER_H_
-#define INCLUDE_KALMAN_FILTER_H_
+#ifndef INCLUDE_KALMAN_FILTER_HPP_
+#define INCLUDE_KALMAN_FILTER_HPP_
 #include "Eigen/Dense"
+
+inline double DegToRad(const double deg) {
+  return deg * M_PI / 180.;
+}
+
+inline double RadToDeg(const double rad) {
+  return rad * 180. / M_PI;
+}
 
 class KalmanFilter {
  public:
@@ -37,6 +45,7 @@ class KalmanFilter {
   void set_x(const Eigen::VectorXd &x_in);
   void set_F(const Eigen::MatrixXd &F);
   void set_H(const Eigen::MatrixXd &H);
+  void set_Q(const Eigen::MatrixXd &Q);
   void set_R(const Eigen::MatrixXd &R);
   void set_t(const double t_new);
 
@@ -64,4 +73,4 @@ class KalmanFilter {
   // estimate time stamp
   double t_;
 };
-#endif  // INCLUDE_KALMAN_FILTER_H_
+#endif  // INCLUDE_KALMAN_FILTER_HPP_

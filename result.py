@@ -9,6 +9,11 @@ def transform_matrix():
     roll = np.deg2rad(0.6)
     translation = np.array((-0.1, 0.25, -0.8)).reshape((3,1))
 
+    # yaw = np.deg2rad(33.57)
+    # pitch = np.deg2rad(1.26)
+    # roll = np.deg2rad(0.07)
+    # translation = np.array((0.15, 0.10, -0.2)).reshape((3,1))
+
     yawMatrix = np.matrix([[math.cos(yaw), -math.sin(yaw), 0],[math.sin(yaw), math.cos(yaw), 0],[0, 0, 1]])
     pitchMatrix = np.matrix([[math.cos(pitch), 0, math.sin(pitch)],[0, 1, 0],[-math.sin(pitch), 0, math.cos(pitch)]])
     rollMatrix = np.matrix([[1, 0, 0],[0, math.cos(roll), -math.sin(roll)],[0, math.sin(roll), math.cos(roll)]])
@@ -64,13 +69,14 @@ if __name__=='__main__':
     a_pred = np.rad2deg(np.arctan2(data[:,4], data[:,3]))
     a_update = np.rad2deg(np.arctan2(data[:,6], data[:,5]))
 
+    time_delay = 0.05
     x_raw = data[:,1]
     y_raw = data[:,2]
     x_pred = data[:,3]
     y_pred = data[:,4]
     x_update = data[:,5]
     y_update = data[:,6]
-    t = data[:, 0] - data[0,0]
+    t = data[:, 0] - data[0, 0] - time_delay
 
     ground_truth = transform_points(ground_truth)
 
@@ -83,61 +89,59 @@ if __name__=='__main__':
     x_g = np.multiply(s[:,2], np.cos(s[:,1]*math.pi/180));
     y_g = np.multiply(s[:,2], np.sin(s[:,1]*math.pi/180));
     a_g = s[:,1]
-    t_g = s[:,0] - data[0,0] - 0.05
+    t_g = s[:,0] - data[0, 0]
 
 
     # time v.s. azimuth
-    plt.figure()
-    plt.scatter(t, a_raw, s = 0.2, color = 'red', label = 'raw')
-    plt.scatter(t, a_pred, s = 0.2, color = 'blue', label = 'pred')
-    plt.scatter(t, a_update, s = 0.2, color = 'green', label = 'update')
+    fig = plt.figure()
+    plt.subplot_tool() 
+    plt.subplot(2,2,1)
+    plt.scatter(t, a_raw, s = 0.5, color = 'red', label = 'raw')
+    plt.scatter(t, a_pred, s = 0.5, color = 'blue', label = 'pred')
+    plt.scatter(t, a_update, s = 0.5, color = 'green', label = 'update')
     plt.plot(t_g, a_g, linewidth=0.5, color = 'black', linestyle="-", label = 'ground truth')
     plt.xlabel('time')
     plt.ylabel('azimuth(deg)')
+    plt.ylim(np.min(a_raw)-1, np.max(a_raw)+1)
     plt.legend(loc='upper left')
 
-    plt.savefig('ta.png', dpi = 700)
-    plt.show()
-
-
     # time v.s. X
-    plt.figure()
-    plt.scatter(t, x_raw, s = 0.3, color = 'red', label = 'raw')
-    plt.scatter(t, x_pred, s = 0.3, color = 'blue', label = 'pred')
-    plt.scatter(t, x_update, s = 0.3, color = 'green', label = 'update')
+    plt.subplot(2,2,2)
+    plt.scatter(t, x_raw, s = 0.5, color = 'red', label = 'raw')
+    plt.scatter(t, x_pred, s = 0.5, color = 'blue', label = 'pred')
+    plt.scatter(t, x_update, s = 0.5, color = 'green', label = 'update')
     plt.plot(t_g, x_g, linewidth=0.5, color = 'black', linestyle="-", label = 'ground truth')
     plt.xlabel('time')
     plt.ylabel('x(m)')
+    plt.ylim(np.min(x_raw)-1, np.max(x_raw)+1)
     plt.legend(loc='upper right')
 
-    plt.savefig('tx.png', dpi = 700)
-    plt.show()
 
 
     # time v.s. y
-    plt.figure()
-    plt.scatter(t, y_raw, s = 0.3, color = 'red', label = 'raw')
-    plt.scatter(t, y_pred, s = 0.3, color = 'blue', label = 'pred')
-    plt.scatter(t, y_update, s = 0.3, color = 'green', label = 'update')
+    plt.subplot(2,2,3)
+    plt.scatter(t, y_raw, s = 0.5, color = 'red', label = 'raw')
+    plt.scatter(t, y_pred, s = 0.5, color = 'blue', label = 'pred')
+    plt.scatter(t, y_update, s = 0.5, color = 'green', label = 'update')
     plt.plot(t_g, y_g, linewidth=0.5, color = 'black', linestyle="-", label = 'ground truth')
     plt.xlabel('time')
     plt.ylabel('y(m)')
+    plt.ylim(np.min(y_raw)-1, np.max(y_raw)+1)
     plt.legend(loc='upper left')
-
-    plt.savefig('ty.png', dpi = 700)
-    plt.show()
 
 
     # time v.s. y
-    plt.figure()
-    plt.scatter(x_raw, y_raw, s = 0.3, color = 'red', label = 'raw')
-    plt.scatter(x_pred, y_pred, s = 0.3, color = 'blue', label = 'pred')
-    plt.scatter(x_update, y_update, s = 0.3, color = 'green', label = 'update')
+    plt.subplot(2,2,4)
+    plt.scatter(x_raw, y_raw, s = 0.5, color = 'red', label = 'raw')
+    plt.scatter(x_pred, y_pred, s = 0.5, color = 'blue', label = 'pred')
+    plt.scatter(x_update, y_update, s = 0.5, color = 'green', label = 'update')
     plt.plot(x_g, y_g, linewidth=0.5, color = 'black', linestyle="-", label = 'ground truth')
     plt.xlabel('x(m)')
     plt.ylabel('y(m)')
+    plt.xlim(np.min(x_raw)-1, np.max(x_raw)+1)
+    plt.ylim(np.min(y_raw)-1, np.max(y_raw)+1)
     plt.legend(loc='upper right')
+    plt.axis('equal')
 
-    plt.savefig('xy.png', dpi = 700)
     plt.show()
 
