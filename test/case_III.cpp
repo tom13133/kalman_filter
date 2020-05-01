@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <vector>
 #include <iostream>
 #include <fstream>
 
@@ -113,13 +114,13 @@ int main() {
     double range = meas.range_;
     double azimuth = DegToRad(meas.azimuth_);
     double cov_range = (0.25/3)*(0.25/3);
-    double cov_azimuth = (1./3)*(1./3);
+    double cov_azimuth = (DegToRad(1.)/3)*(DegToRad(1.)/3);
     double cov_rate = (0.12/3)*(0.12/3);
 
-    J << cos(azimuth), -sin(azimuth),
-         sin(azimuth), cos(azimuth);
+    J << cos(azimuth), -range * sin(azimuth),
+         sin(azimuth), range * cos(azimuth);
     J_inv << cos(azimuth), sin(azimuth),
-             -sin(azimuth), cos(azimuth);
+             -range * sin(azimuth), range * cos(azimuth);
     R0 << cov_range, 0,
           0, cov_azimuth;  // Need to be set
     R0 = J * R0 * J_inv;
