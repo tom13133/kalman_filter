@@ -107,6 +107,7 @@ int main() {
     H << 1, 0, 0, 0,
          0, 1, 0, 0,
          H20, H21, H22, H23;
+    kf.set_H(H);
 
     // Haven't find an approach to map uncertainty from polar to cartesian
     // Here is an approximation method.
@@ -191,8 +192,10 @@ void kf_init(KalmanFilter& kf, measurement& meas) {
   double x = meas.range_ * std::cos(DegToRad(meas.azimuth_));
   double y = meas.range_ * std::sin(DegToRad(meas.azimuth_));
   // EKF initialization
+  double range = meas.range_;
+  double azimuth = DegToRad(meas.azimuth_);
   double cov_range = (0.25/3)*(0.25/3);
-  double cov_azimuth = (1./3)*(1./3);
+  double cov_azimuth = (DegToRad(1.)/3)*(DegToRad(1.)/3);
   double cov_rate = (0.12/3)*(0.12/3);
 
   Eigen::VectorXd x_in(4), u_in(4);
@@ -227,10 +230,10 @@ void kf_init(KalmanFilter& kf, measurement& meas) {
   // Haven't find an approach to map uncertainty from polar to cartesian
   // Here is an approximation method.
   Eigen::MatrixXd J(2, 2), J_inv(2, 2), R0(2, 2);
-  J << cos(meas.azimuth_), -sin(meas.azimuth_),
-       sin(meas.azimuth_), cos(meas.azimuth_);
-  J_inv << cos(meas.azimuth_), sin(meas.azimuth_),
-           -sin(meas.azimuth_), cos(meas.azimuth_);
+  J << cos(azimuth), -range * sin(azimuth),
+       sin(azimuth), range * cos(azimuth);
+  J_inv << cos(azimuth), sin(azimuth),
+           -range * sin(azimuth), range * cos(azimuth);
   R0 << cov_range, 0,
         0, cov_azimuth;  // Need to be set
   R0 = J * R0 * J_inv;
